@@ -1,16 +1,20 @@
+/**
+ * Simple signal server
+ */
+
 const express = require("express");
 const { createServer } = require("https");
 const { readFileSync } = require("fs");
 const { nanoid } = require("nanoid");
 const { resolve } = require("path");
 const { WebSocketServer, OPEN } = require("ws");
-const { Console } = require("console");
 
 const app = express();
+
 const appServer = createServer(
   {
-    key: readFileSync(resolve(__dirname, "./../ssl/cert.key")),
     cert: readFileSync(resolve(__dirname, "./../ssl/cert.pem")),
+    key: readFileSync(resolve(__dirname, "./../ssl/cert.key")),
   },
   app
 ).listen(3000);
@@ -18,41 +22,13 @@ const appServer = createServer(
 app.use(express.static(resolve(__dirname, "./../public")));
 
 const wsServer = createServer({
-  key: readFileSync(resolve(__dirname, "./../ssl/cert.key")),
   cert: readFileSync(resolve(__dirname, "./../ssl/cert.pem")),
+  key: readFileSync(resolve(__dirname, "./../ssl/cert.key")),
 });
-
 const wss = new WebSocketServer({ server: wsServer });
 
-const handleJsonMessage = (socket, jsonMessage) => {
-  switch (jsonMessage.type) {
-    case "start":
-      socket.id = nanoid();
-      emitMessage(socket, { action: "start", id: socket.id });
-      break;
-    default:
-      //  Default we will just relay the message to the peer
-      if (!jsonMessage.data.remoteId) return;
-      const remotePeerSocket = getSocketById(jsonMessage.data.remoteId);
-
-      if (!remotePeerSocket) {
-        return console.log(
-          "failed to find remote socket with id",
-          jsonMessage.data.remoteId
-        );
-      }
-      //  delete/edit the remoteId depending if the action is offer or not
-      if (jsonMessage.action !== "offer") {
-        delete jsonMessage.data.remoteId;
-      } else {
-        jsonMessage.data.remoteId = socket.id;
-      }
-      emitMessage(remotePeerSocket, jsonMessage);
-  }
-};
-
 wss.on("connection", (socket) => {
-  console.log("New connection");
+  console.log("new connection");
 
   socket.on("message", (data) => {
     console.log("socket::message data=%s", data);
@@ -61,14 +37,44 @@ wss.on("connection", (socket) => {
       const jsonMessage = JSON.parse(data);
       handleJsonMessage(socket, jsonMessage);
     } catch (error) {
-      console.log("failed to handle onmessage", error);
+      console.error("failed to handle onmessage", error);
     }
   });
 
-  socket.on("close", () => {
+  socket.once("close", () => {
     console.log("socket::close");
   });
 });
+
+const handleJsonMessage = (socket, jsonMessage) => {
+  switch (jsonMessage.action) {
+    case "start":
+      socket.id = nanoid();
+      emitMessage(socket, { action: "start", id: socket.id });
+      break;
+    default:
+      // Default we will just relay the message to the peer
+      if (!jsonMessage.data.remoteId) return;
+
+      const remotePeerSocket = getSocketById(jsonMessage.data.remoteId);
+
+      if (!remotePeerSocket) {
+        return console.log(
+          "failed to find remote socket with id",
+          jsonMessage.data.remoteId
+        );
+      }
+
+      // delete/edit the remoteId depending if the action is offer or not
+      if (jsonMessage.action !== "offer") {
+        delete jsonMessage.data.remoteId;
+      } else {
+        jsonMessage.data.remoteId = socket.id;
+      }
+
+      emitMessage(remotePeerSocket, jsonMessage);
+  }
+};
 
 const emitMessage = (socket, jsonMessage) => {
   if (socket.readyState === OPEN) {
@@ -76,10 +82,9 @@ const emitMessage = (socket, jsonMessage) => {
   }
 };
 
-// helper to get socket via id
-const getSocketById = (socketId) => {
-  return wss.clients.find((client) => client.id === socketId);
-};
+// Helper to get socket via id
+const getSocketById = (socketId) =>
+  Array.from(wss.clients).find((client) => client.id === socketId);
 
 wsServer.listen(8888);
 console.log("app server listening on port 3000");
