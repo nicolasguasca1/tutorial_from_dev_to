@@ -1,0 +1,17 @@
+{
+  "name": "tutorial_from_dev_to",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/server",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": "https://github.com/nicolasguasca1/tutorial_from_dev_to.git",
+  "author": "nicolasguasca1 <nicolas.guasca@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.17.2",
+    "nanoid": "^3.2.0",
+    "ws": "^8.4.2"
+  }
+}
