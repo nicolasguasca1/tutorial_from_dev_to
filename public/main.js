@@ -9,7 +9,7 @@ const startHD = () =>
   getMedia({ video: { width: 1280, height: 720 }, audio: true });
 
 const startFullHD = () =>
-  getMedia({ video: { width: 1920, height: 1080 }, audio: true });
+  getMedia({ video: { width: { min: 600, max: 1300 }, height: { min: 300, max: 800 } } };
 
 const stop = () => {
   if (!localVideo.srcObject) return;
